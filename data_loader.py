@@ -16,7 +16,7 @@ class DataLoader:
             '_': 5,
             '\n': 6
         }
-        self.ix_to_char = {v:k for (k,v) in char_to_ix.items()}
+        self.ix_to_char = {v:k for (k,v) in self.char_to_ix.items()}
         self.readFile(file_path)
         self.idx = 0
         
@@ -70,10 +70,17 @@ class DataLoader:
         # convert to torch long tensor (ready to be used by nn.Embedding)
         all_input_data = torch.from_numpy(np.asarray(all_input_data)).long()
         all_target_data = torch.from_numpy(np.asarray(all_target_data)).long()
-        
+
         return all_input_data, all_target_data
     
     def readFile(self, file_path):
         with open(file_path, 'r') as f:
             self.lines = f.read().split('\n')
         self.total_lines = len(self.lines)
+
+    def convert_to_char(self, data):
+        string_arr = []
+        for each_tensor in data:
+            string = ''.join([self.ix_to_char[i] for i in each_tensor.data.numpy()])
+            string_arr.append(string)
+        return string_arr

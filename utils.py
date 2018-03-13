@@ -10,10 +10,10 @@ from torch.autograd import Variable
 class Utils:
     @staticmethod
     def g_output_prob(prob, BATCH_SIZE, g_sequence_len):
-    softmax = nn.Softmax(dim=1)
-    theta_prime = softmax(prob)
-    theta_prime = torch.sum(theta_prime, dim=0).view((-1,))/(BATCH_SIZE*g_sequence_len)
-    return theta_prime
+        softmax = nn.Softmax(dim=1)
+        theta_prime = softmax(prob)
+        theta_prime = torch.sum(theta_prime, dim=0).view((-1,))/(BATCH_SIZE*g_sequence_len)
+        return theta_prime
 
     # performs a Gumbel-Softmax reparameterization of the input
     @staticmethod
