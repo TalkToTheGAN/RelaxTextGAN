@@ -30,6 +30,7 @@ g_hidden_dim = 8
 d_hidden_dim = 8
 g_output_dim = 1
 vocab_size = 7  # need to not hard code this. Todo for later.
+checkpoint_dir = './checkpoints'
 
 def convert_to_one_hot(data, vocab_size):
     """
@@ -75,9 +76,9 @@ def train_generator_epoch(model, data_loader, criterion, optimizer):
 
 
 def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer):
+    count = 0
     for data, _ in data_loader:
         total_loss = 0.0
-        total_words = 0.0
         target = torch.ones(data.size())
         data = Variable(data)       #dim=batch_size x sequence_length e.g: 16x15
         target = Variable(target)   #dim=batch_size x sequence_length e.g: 16x15
@@ -107,6 +108,11 @@ def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_o
         G_loss.backward()
         gen_optimizer.step()
 
+        total_loss += G_loss
+        count+=1
+    
+    print("Loss: ", G_loss/count)
+
     data_loader.reset()
 
 def main():
@@ -124,7 +130,7 @@ def main():
         generator.cuda()
 
 
-    for i in tqdm(range(20)):
+    for i in tqdm(range(total_epochs)):
         train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer)
 
 
@@ -134,6 +140,10 @@ def main():
         for each_str in data_loader.convert_to_char(sample):
             f.write(each_str+'\n')
 
+    # file_name = 'gen_gumbel_softmax_' + str(total_epochs) + '.pth'
+    # Utils.save_checkpoints(checkpoint_dir, file_name, generator)
+    # file_name = 'disc_gumbel_softmax_' + str(total_epochs) + '.pth'
+    # Utils.save_checkpoints(checkpoint_dir, file_name, discriminator)
 
 if __name__ == '__main__':
     main()

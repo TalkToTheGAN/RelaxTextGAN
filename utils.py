@@ -36,3 +36,10 @@ class Utils:
         z_tilde = -torch.log(-torch.log(v)/theta_prime - torch.log(v[b]))
         z_tilde[b] = -torch.log(-torch.log(v[b]))
         return z_tilde
+
+    @staticmethod
+    def save_checkpoints(checkpoint_dir, file_name, model):
+        path = os.path.join(checkpoint_dir, file_name)
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
+        torch.save(model.parameters(), path)
