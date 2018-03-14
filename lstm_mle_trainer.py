@@ -67,7 +67,7 @@ def main():
     sample = generator.sample(batch_size, g_seq_length)
 
     with open('./data/lstm_mle_gen_data.txt', 'w') as f:
-        for each_str in data_loader.convert_to_char(data):
+        for each_str in data_loader.convert_to_char(sample):
             f.write(each_str+'\n')
     plt.plot(losses_array)
     plt.show()

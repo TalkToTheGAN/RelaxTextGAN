@@ -17,11 +17,14 @@ class Utils:
 
     # performs a Gumbel-Softmax reparameterization of the input
     @staticmethod
-    def gumbel_softmax(theta_prime, VOCAB_SIZE, cuda=False):
+    def gumbel_softmax(theta_prime, VOCAB_SIZE, in_log_space = False, cuda=False):
         u = Variable(torch.log(-torch.log(torch.rand(VOCAB_SIZE))))
         if cuda:
-            u = Variable(torch.log(-torch.log(torch.rand(VOCAB_SIZE)))).cuda()
-        z = torch.log(theta_prime) - u
+            u = u.cuda()
+        if(in_log_space):
+            z = theta_prime - u
+        else:
+            z = torch.log(theta_prime) - u
         return z
 
     # categorical re-sampling exactly as in Backpropagating through the void - Appendix B

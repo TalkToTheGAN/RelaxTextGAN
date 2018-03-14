@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 class Discriminator(nn.Module):
     """
@@ -40,3 +41,40 @@ class Discriminator(nn.Module):
     def init_parameters(self):
         for param in self.parameters():
             param.data.uniform_(-0.05, 0.05)
+
+class LSTMDiscriminator(nn.Module):
+    """
+        Many to one LSTM
+    """
+    def __init__(self, vocab_size, hidden_dim, use_cuda=False):
+        super(LSTMDiscriminator, self).__init__()
+        self.vocab_size = vocab_size
+        self.hidden_dim = hidden_dim
+        self.use_cuda = use_cuda
+        self.lstm = nn.LSTM(vocab_size, hidden_dim, batch_first=True)
+        self.lin = nn.Linear(hidden_dim, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    """
+        x is output of Generator
+        x dimensions: (batch_size, seq_len, vocab_size)
+
+    """
+    def forward(self, x):
+        h0, c0 = self.init_hidden(x.size(0))
+        output, (h, c) = self.lstm(x, (h0, c0))  # output dim: (batch_size, seq_length, hidden_dim)
+
+        seq_len = output.size()[1]
+        batch_size = output.size()[0]
+        
+        output = self.lin(output.contiguous().view(-1, self.hidden_dim)).view(batch_size, seq_len)
+        output = output[:, -1] # only intersted in last last LSTM block's output
+        return self.sigmoid(output).view(-1,1)
+
+    def init_hidden(self, batch_size):
+        # noise distribution fed to G
+        h = Variable(torch.zeros((1, batch_size, self.hidden_dim)))
+        c = Variable(torch.zeros((1, batch_size, self.hidden_dim)))
+        if self.use_cuda:
+            h, c = h.cuda(), c.cuda()
+        return h, c

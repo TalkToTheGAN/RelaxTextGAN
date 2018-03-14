@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+from utils import Utils
+
 
 class Generator(nn.Module):
     """Generator """
@@ -37,6 +39,9 @@ class Generator(nn.Module):
 
         pred = self.log_softmax(self.lin(output.contiguous().view(-1, self.hidden_dim)))
         pred = pred.view(batch_size, seq_len, self.vocab_size)
+
+        h0, c0 = self.init_hidden(x.size(0)) # removing history
+
         return pred
 
     def step(self, x, h, c):
@@ -93,3 +98,43 @@ class Generator(nn.Module):
                 x = output.multinomial(1)
         output = torch.cat(samples, dim=1)
         return output
+
+    def sample_one_hot(self, batch_size, seq_len, vocab_size):
+        x = Variable(torch.zeros((batch_size, 1)).long())
+        samples = Variable(torch.Tensor(seq_len, batch_size, vocab_size))
+
+        if(self.use_cuda):
+            x = x.cuda()
+            samples.cuda()
+        h, c = self.init_hidden(batch_size)
+
+        for i in range(seq_len):
+            output, h, c = self.step(x, h, c)
+            x = output.multinomial(1)
+            
+            one_hot = Variable(torch.zeros((batch_size, vocab_size)).long())
+            samples[i] = one_hot.scatter_(1, x, 1)
+
+        samples = samples.view(batch_size, seq_len, vocab_size)
+        return samples
+    """
+        returns relaxed samples drawn from lstm according to concrete distrubution
+        returned tensor dimenstions (batch_size, seq_len, vocab_size)
+    """
+    def relaxed_sample(self, batch_size, seq_len, vocab_size):
+        
+        x = Variable(torch.zeros((batch_size, 1)).long())
+        samples = Variable(torch.Tensor(seq_len, batch_size, vocab_size))
+
+        if(self.use_cuda):
+            x = x.cuda()
+            samples.cuda()
+        h, c = self.init_hidden(batch_size)
+
+        for i in range(seq_len):
+            output, h, c = self.step(x, h, c)   # output is a softmax output of shape (batch_size, vocab_size)
+            relaxed_sample = F.softmax(Utils.gumbel_softmax(output, output.size(1)), dim=1)
+            samples[i] = relaxed_sample
+
+        samples = samples.view(batch_size, seq_len, vocab_size)
+        return samples
