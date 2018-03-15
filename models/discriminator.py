@@ -54,6 +54,7 @@ class LSTMDiscriminator(nn.Module):
         self.lstm = nn.LSTM(vocab_size, hidden_dim, batch_first=True)
         self.lin = nn.Linear(hidden_dim, 1)
         self.sigmoid = nn.Sigmoid()
+        self.init_parameters()
 
     """
         x is output of Generator
@@ -78,3 +79,7 @@ class LSTMDiscriminator(nn.Module):
         if self.use_cuda:
             h, c = h.cuda(), c.cuda()
         return h, c
+
+    def init_parameters(self):
+        for param in self.parameters():
+            param.data.normal_(0, 0.02)

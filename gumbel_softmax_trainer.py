@@ -29,7 +29,7 @@ g_emb_dim = 8
 g_hidden_dim = 8
 d_hidden_dim = 8
 g_output_dim = 1
-vocab_size = 7  # need to not hard code this. Todo for later.
+vocab_size = 6
 checkpoint_dir = './checkpoints'
 
 def convert_to_one_hot(data, vocab_size):
@@ -50,35 +50,14 @@ def convert_to_one_hot(data, vocab_size):
 
     return samples
 
-def train_generator_epoch(model, data_loader, criterion, optimizer):
-    losses_array = []
-    for data, target in data_loader:
-        total_loss = 0.0
-        total_words = 0.0
-        data = Variable(data)       #dim=batch_size x sequence_length e.g: 16x15
-        target = Variable(target)   #dim=batch_size x sequence_length e.g: 16x15
-        if opt.cuda:
-            data, target = data.cuda(), target.cuda()
-        pred = model(data)
 
-        target = target.view(-1)
-        pred = pred.view(-1, vocab_size)
-
-        loss = criterion(pred, target)
-        total_loss += loss.data[0]
-        total_words += data.size(0) * data.size(1)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        losses_array.append(total_loss)
-
-    data_loader.reset()
-
-
-def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer):
+def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer, criterion):
     count = 0
+    all_G_losses = []
+    all_D_losses = []
     for data, _ in data_loader:
-        total_loss = 0.0
+        total_G_loss = 0.0
+        total_D_loss = 0.0
         target = torch.ones(data.size())
         data = Variable(data)       #dim=batch_size x sequence_length e.g: 16x15
         target = Variable(target)   #dim=batch_size x sequence_length e.g: 16x15
@@ -86,34 +65,45 @@ def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_o
             data, target = data.cuda(), target.cuda()
 
         real_data = convert_to_one_hot(data, vocab_size)
-        real_target = torch.ones((data.size(0), 1))
+        real_target = Variable(torch.ones((data.size(0), 1)))
 
-        fake_data = generator.relaxed_sample(batch_size, g_seq_length, vocab_size)
-        fake_target = torch.zeros((data.size(0), 1))
+        fake_data = generator.relaxed_sample(batch_size, g_seq_length, vocab_size, 2)
+        fake_target = Variable(torch.zeros((data.size(0), 1)))
 
         real_pred = discriminator(real_data)
         fake_pred = discriminator(fake_data)
 
 
-        D_loss = -0.5 * torch.log(real_pred.sum(dim=0)) - 0.5 * torch.log(1 - fake_pred.sum(dim=0))
+        D_real_loss = criterion(real_pred, real_target)
+        D_fake_loss = criterion(fake_pred, fake_target)
+        D_loss = D_real_loss + D_fake_loss
+        # D_loss = -0.5 * torch.log(real_pred.sum(dim=0)) - 0.5 * torch.log(1 - fake_pred.sum(dim=0))
         disc_optimizer.zero_grad()
         D_loss.backward()
         disc_optimizer.step()
 
-        fake_data = generator.relaxed_sample(batch_size, g_seq_length, vocab_size)
+        fake_data = generator.relaxed_sample(batch_size, g_seq_length, vocab_size, 2)
         fake_pred = discriminator(fake_data)
 
-        G_loss = -0.5 * torch.log(fake_pred.sum(dim=0))
+        G_loss = criterion(fake_pred, real_target)
+        # G_loss = -0.5 * torch.log(fake_pred.sum(dim=0))
         gen_optimizer.zero_grad()
         G_loss.backward()
         gen_optimizer.step()
 
-        total_loss += G_loss
+        total_G_loss += G_loss.data[0]
+        total_D_loss += D_loss.data[0]
+
+        all_G_losses.append(total_G_loss)
+        all_D_losses.append(total_D_loss)
+
         count+=1
     
-    print("Loss: ", G_loss/count)
+    print("Total G loss: ", total_G_loss/count)
+    print("Total D loss: ", total_D_loss/count)
 
     data_loader.reset()
+    return all_G_losses, all_D_losses
 
 def main():
 
@@ -121,29 +111,41 @@ def main():
     generator = Generator(vocab_size, g_emb_dim, g_hidden_dim)
     discriminator = Discriminator(vocab_size, d_hidden_dim)
     
-    gen_optimizer = optim.Adam(generator.parameters())
-    gen_criterion = nn.NLLLoss(size_average=False)
+    gen_optimizer = optim.Adam(generator.parameters(), lr=0.0001)
+    disc_optimizer = optim.Adam(discriminator.parameters(), lr = 0.0001)
 
-    disc_optimizer = optim.Adam(discriminator.parameters())
+    bce_criterion = nn.BCELoss()
 
     if (opt.cuda):
         generator.cuda()
 
 
+    all_G_losses = []
+    all_D_losses = []
     for i in tqdm(range(total_epochs)):
-        train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer)
+        g_losses, d_losses = train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer, bce_criterion)
+        all_G_losses += g_losses
+        all_D_losses += d_losses
 
 
     sample = generator.sample(batch_size, g_seq_length)
+
+    print(generator)
 
     with open('./data/gumbel_softmax_gan_gen.txt', 'w') as f:
         for each_str in data_loader.convert_to_char(sample):
             f.write(each_str+'\n')
 
-    # file_name = 'gen_gumbel_softmax_' + str(total_epochs) + '.pth'
-    # Utils.save_checkpoints(checkpoint_dir, file_name, generator)
-    # file_name = 'disc_gumbel_softmax_' + str(total_epochs) + '.pth'
-    # Utils.save_checkpoints(checkpoint_dir, file_name, discriminator)
+    gen_file_name = 'gen_gumbel_softmax_' + str(total_epochs) + '.pth'
+    disc_file_name = 'disc_gumbel_softmax_' + str(total_epochs) + '.pth'
+
+    Utils.save_checkpoints(checkpoint_dir, gen_file_name, generator)
+    Utils.save_checkpoints(checkpoint_dir, disc_file_name, discriminator)
+
+    plt.plot(list(range(len(all_G_losses))), all_G_losses, 'g-', label='gen loss')
+    plt.plot(list(range(len(all_D_losses))), all_D_losses, 'b-', label='disc loss')
+    plt.legend()
+    plt.show()
 
 if __name__ == '__main__':
     main()

@@ -42,4 +42,4 @@ class Utils:
         path = os.path.join(checkpoint_dir, file_name)
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-        torch.save(model.parameters(), path)
+        torch.save(model.state_dict(), path)

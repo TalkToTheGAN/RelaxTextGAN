@@ -67,7 +67,7 @@ class Generator(nn.Module):
     
     def init_params(self):
         for param in self.parameters():
-            param.data.uniform_(-0.05, 0.05)
+            param.data.normal_(0.0, 0.02)
 
     def sample(self, batch_size, seq_len, x=None):
         res = []
@@ -121,7 +121,7 @@ class Generator(nn.Module):
         returns relaxed samples drawn from lstm according to concrete distrubution
         returned tensor dimenstions (batch_size, seq_len, vocab_size)
     """
-    def relaxed_sample(self, batch_size, seq_len, vocab_size):
+    def relaxed_sample(self, batch_size, seq_len, vocab_size, temp_coeff=1.0):
         
         x = Variable(torch.zeros((batch_size, 1)).long())
         samples = Variable(torch.Tensor(seq_len, batch_size, vocab_size))
@@ -133,7 +133,8 @@ class Generator(nn.Module):
 
         for i in range(seq_len):
             output, h, c = self.step(x, h, c)   # output is a softmax output of shape (batch_size, vocab_size)
-            relaxed_sample = F.softmax(Utils.gumbel_softmax(output, output.size(1)), dim=1)
+            gs = Utils.gumbel_softmax(output, output.size(1))/temp_coeff
+            relaxed_sample = F.softmax(gs, dim=1)
             samples[i] = relaxed_sample
 
         samples = samples.view(batch_size, seq_len, vocab_size)
