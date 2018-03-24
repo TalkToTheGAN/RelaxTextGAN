@@ -7,6 +7,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from utils import Utils
+import copy
+
 
 
 class Generator(nn.Module):
@@ -122,7 +124,7 @@ class Generator(nn.Module):
         returned tensor dimenstions (batch_size, seq_len, vocab_size)
     """
     def relaxed_sample(self, batch_size, seq_len, vocab_size, temp_coeff=1.0):
-        
+
         x = Variable(torch.zeros((batch_size, 1)).long())
         samples = Variable(torch.Tensor(seq_len, batch_size, vocab_size))
 
@@ -139,3 +141,36 @@ class Generator(nn.Module):
 
         samples = samples.view(batch_size, seq_len, vocab_size)
         return samples
+
+    def sample_one_hot_with_prob(self, batch_size, seq_len, vocab_size):
+        x = Variable(torch.zeros((batch_size, 1)).long())
+        samples = Variable(torch.Tensor(seq_len, batch_size, vocab_size))
+        actual_probs = Variable(torch.Tensor(seq_len, batch_size, vocab_size))
+        sampled_probs = Variable(torch.Tensor(seq_len, batch_size, vocab_size))
+
+        if(self.use_cuda):
+            x = x.cuda()
+            samples.cuda()
+        h, c = self.init_hidden(batch_size)
+
+        for i in range(seq_len):
+            output, h, c = self.step(x, h, c)
+            actual_probs[i] = output
+            x = output.multinomial(1)
+            
+            one_hot = Variable(torch.zeros((batch_size, vocab_size)).long())
+            p = Variable(torch.zeros((batch_size, vocab_size)))
+            samples[i] = one_hot.scatter_(1, x, 1)
+
+            for output_index, each in enumerate(output):
+                required_index = copy.copy(x[output_index].data[0])
+                required_prob = output[output_index][required_index].data[0]
+                p[output_index, required_index] = np.log(required_prob)
+            sampled_probs[i] = p
+
+        samples = samples.view(batch_size, seq_len, vocab_size)
+        # print(torch.log(actual_probs))
+        actual_probs = actual_probs.view(batch_size, seq_len, vocab_size)
+        actual_probs = torch.log(actual_probs)
+        sampled_probs = sampled_probs.view(batch_size, seq_len, vocab_size)
+        return samples, actual_probs, sampled_probs

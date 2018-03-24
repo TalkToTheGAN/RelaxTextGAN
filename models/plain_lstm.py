@@ -90,3 +90,25 @@ class PlainLSTM(nn.Module):
                 x = output.multinomial(1)
         output = torch.cat(samples, dim=1)
         return output
+
+
+    def test_sample(self, batch_size, seq_len, vocab_size):
+
+        big_list = []
+        x = Variable(torch.zeros((batch_size, 1)).long())
+        h, c = self.init_hidden(batch_size)
+
+        for i in range(seq_len):
+            output, h, c = self.step(x, h, c)
+            g = Variable(torch.zeros(output.size()))
+            # print(g.size())
+            g.data[:,0] = 1 # R*pij
+            # output.backward(g)
+            big_list.append((output, g))
+
+        
+
+        for p, g in big_list:
+            p.backward(g)
+        return output
+        
