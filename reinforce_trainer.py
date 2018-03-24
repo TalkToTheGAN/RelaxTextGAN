@@ -91,7 +91,7 @@ def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_o
         fake_data, actual_log_probs, sampled_log_probs = generator.sample_one_hot_with_prob(batch_size, g_seq_length, vocab_size)
         fake_pred = discriminator(fake_data)
         total_reward = fake_pred.sum(dim=0)
-        sampled_log_probs*=total_reward
+        sampled_log_probs *= -1 * total_reward # maximinzing reward or minimizing negative reward.
 
         for batch_index, each in enumerate(sampled_log_probs):
             for seq_index, each_seq in enumerate(each):
