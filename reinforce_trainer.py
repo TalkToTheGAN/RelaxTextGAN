@@ -126,6 +126,7 @@ def main():
         all_G_rewards = train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer, bce_criterion)
 
         if(i%3==0):
+            sample = generator.sample(batch_size, g_seq_length)
             with open('./data/reinforce_gan_data_epoch'+ str(i) + '.txt', 'w') as f:
                 for each_str in data_loader.convert_to_char(sample):
                     f.write(each_str+'\n')
