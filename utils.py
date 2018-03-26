@@ -43,3 +43,33 @@ class Utils:
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
         torch.save(model.state_dict(), path)
+
+
+    @staticmethod
+    '''
+    Per batch score 
+    '''
+    def get_data_goodness_score(all_data):
+        # all_data dim: (no_of_sequences, length_of_one_sequence), eeach cell is a string
+        total_batch_score = 0
+        print(len(all_data))
+        for batch_index, batch_input in enumerate(all_data):
+            for seq_index, seq_input in enumerate(batch_input):
+                total_batch_score += Utils.get_seq_goodness_score(seq_input)
+        return total_batch_score/len(all_data)
+
+    @staticmethod
+    def get_seq_goodness_score(seq):
+        # seq dim is a string of length len(seq)
+
+        score = 0
+        for i in range(len(seq)-2):
+            j = i + 3
+            sliced_string = seq[i:j]
+            
+            if sliced_string[0] == 'x' and sliced_string[1]!='x' and sliced_string[2] == 'x':
+                score += 1
+            elif sliced_string[0] != 'x' and sliced_string[1] =='x' and sliced_string[2] != 'x':
+                score+=1
+
+        return score
