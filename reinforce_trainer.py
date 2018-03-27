@@ -54,7 +54,7 @@ def convert_to_one_hot(data, vocab_size):
 
 def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer, criterion):
     count = 0
-    all_G_losses = []
+    # all_G_losses = []
     all_D_losses = []
     all_G_rewards = []
     for data, _ in tqdm(data_loader):
@@ -91,19 +91,20 @@ def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_o
         fake_data, actual_log_probs, sampled_log_probs = generator.sample_one_hot_with_prob(batch_size, g_seq_length, vocab_size)
         fake_pred = discriminator(fake_data)
         total_reward = fake_pred.sum(dim=0)
-        sampled_log_probs *= -1 * total_reward # maximinzing reward or minimizing negative reward.
 
-        for batch_index, each in enumerate(sampled_log_probs):
+        for batch_index, each in enumerate(actual_log_probs):
             for seq_index, each_seq in enumerate(each):
-                each_seq.backward(sampled_log_probs[batch_index, seq_index])
+                g = Variable((sampled_log_probs[batch_index, seq_index]*fake_pred[batch_index]).data)
+                each_seq.backward(g)
 
         gen_optimizer.step()
 
-        all_G_rewards.append(total_reward)
+        all_G_rewards.append(total_reward.data[0])
+        all_D_losses.append(D_loss.data[0])
         count+=1
 
     data_loader.reset()
-    return 
+    return all_G_rewards, all_D_losses
 
 
 def main():
@@ -123,7 +124,7 @@ def main():
 
     for i in tqdm(range(total_epochs)):
         print("EPOCH:", i)
-        all_G_rewards = train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer, bce_criterion)
+        all_G_rewards, all_D_losses = train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer, bce_criterion)
 
         if(i%3==0):
             sample = generator.sample(batch_size, g_seq_length)
@@ -137,7 +138,10 @@ def main():
         for each_str in data_loader.convert_to_char(sample):
             f.write(each_str+'\n')
 
-    plt.plot(all_G_rewards)
-    plt.show()
+
+    plt.plot(list(range(len(all_G_rewards))), all_G_rewards)
+    plt.plot(list(range(len(all_D_losses))), all_D_losses)
+    plt.savefig('reward_and_D_loss.png')
+
 if __name__ == '__main__':
     main()

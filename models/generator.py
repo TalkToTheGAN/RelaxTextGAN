@@ -169,7 +169,6 @@ class Generator(nn.Module):
             sampled_probs[i] = p
 
         samples = samples.view(batch_size, seq_len, vocab_size)
-        # print(torch.log(actual_probs))
         actual_probs = actual_probs.view(batch_size, seq_len, vocab_size)
         actual_probs = torch.log(actual_probs)
         sampled_probs = sampled_probs.view(batch_size, seq_len, vocab_size)

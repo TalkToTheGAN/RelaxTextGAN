@@ -46,10 +46,10 @@ class Utils:
 
 
     @staticmethod
-    '''
-    Per batch score 
-    '''
     def get_data_goodness_score(all_data):
+        '''
+        Per batch score 
+        '''
         # all_data dim: (no_of_sequences, length_of_one_sequence), eeach cell is a string
         total_batch_score = 0
         print(len(all_data))
