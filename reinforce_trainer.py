@@ -129,8 +129,11 @@ def main():
         if(i%3==0):
             sample = generator.sample(batch_size, g_seq_length)
             with open('./data/reinforce_gan_data_epoch'+ str(i) + '.txt', 'w') as f:
+                all_strings = []
                 for each_str in data_loader.convert_to_char(sample):
+                    all_strings.append(each_str)
                     f.write(each_str+'\n')
+                print("Goodness string:", Utils.get_data_goodness_score(all_strings))
 
     sample = generator.sample(batch_size, g_seq_length)
 
