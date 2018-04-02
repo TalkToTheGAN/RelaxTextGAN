@@ -60,6 +60,8 @@ class DataLoader:
             # convert char to index (do this for input data and target data)
             # here input data and target data are staggered by one position
             input_data = [self.char_to_ix[c] for c in line]
+            if len(input_data) < 15:
+                input_data.append(5)
             # target doesn't contain the first char, add 6 (maps to '\n') to end
             target_data = input_data[1:]
             target_data.append(6)

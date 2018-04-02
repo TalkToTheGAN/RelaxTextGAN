@@ -15,6 +15,8 @@ from models.discriminator import LSTMDiscriminator as Discriminator
 from utils import Utils
 from data_loader import DataLoader
 
+#from torch.distributions.categorical import Categorical
+
 parser = argparse.ArgumentParser(description='Training Parameter')
 parser.add_argument('--cuda', action='store', default=None, type=int)
 opt = parser.parse_args()
@@ -92,11 +94,17 @@ def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_o
         fake_pred = discriminator(fake_data)
         total_reward = fake_pred.sum(dim=0)
 
+        
+
         for batch_index, each in enumerate(actual_log_probs):
             for seq_index, each_seq in enumerate(each):
-                g = Variable((sampled_log_probs[batch_index, seq_index]*fake_pred[batch_index]).data)
+                #fake_pred[seq_index].backward()
+                v,i= torch.min(sampled_log_probs[batch_index, seq_index],0)
+                vec = sampled_log_probs[batch_index, seq_index]
+                g = Variable((sampled_log_probs[batch_index, seq_index]*fake_pred[batch_index]).data)/v
                 each_seq.backward(g)
-
+        
+        #total_reward.backward()
         gen_optimizer.step()
 
         all_G_rewards.append(total_reward.data[0])
