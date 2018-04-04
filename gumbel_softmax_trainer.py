@@ -50,6 +50,34 @@ def convert_to_one_hot(data, vocab_size):
 
     return samples
 
+def goodness_score_metric(generator, data_loader):
+    sample = generator.sample(batch_size, g_seq_length)
+    all_strings = []
+    for each_str in data_loader.convert_to_char(sample):
+        all_strings.append(each_str)
+    print("Goodness string:", Utils.get_data_goodness_score(all_strings))
+
+def pretrain_lstm(generator, data_loader, optimizer, criterion, epochs):
+    for i in range(epochs):
+        for data, target in data_loader:
+            data = Variable(data)       #dim=batch_size x sequence_length e.g: 16x15
+            target = Variable(target)   #dim=batch_size x sequence_length e.g: 16x15
+            if opt.cuda:
+                data, target = data.cuda(), target.cuda()
+            pred = generator(data)
+
+            target = target.view(-1)
+            pred = pred.view(-1, vocab_size)
+            loss = criterion(pred, target)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        data_loader.reset()
+    
+    goodness_score_metric(generator, data_loader)
+    
+    print('Finished pretraining LSTM')
+
 
 def train_gan_epoch(discriminator, generator, data_loader, gen_optimizer, disc_optimizer, criterion):
     count = 0
@@ -115,10 +143,12 @@ def main():
     disc_optimizer = optim.Adam(discriminator.parameters(), lr = 0.0001)
 
     bce_criterion = nn.BCELoss()
+    gen_criterion = nn.NLLLoss(size_average=False)
 
     if (opt.cuda):
         generator.cuda()
 
+    pretrain_lstm(generator, data_loader, gen_optimizer, gen_criterion, 2)
 
     all_G_losses = []
     all_D_losses = []

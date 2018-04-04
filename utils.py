@@ -52,7 +52,6 @@ class Utils:
         '''
         # all_data dim: (no_of_sequences, length_of_one_sequence), eeach cell is a string
         total_batch_score = 0
-        print(len(all_data))
         for batch_index, batch_input in enumerate(all_data):
             for seq_index, seq_input in enumerate(batch_input):
                 total_batch_score += Utils.get_seq_goodness_score(seq_input)
