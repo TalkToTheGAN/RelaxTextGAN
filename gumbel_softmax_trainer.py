@@ -22,7 +22,7 @@ print(opt)
 
 
 total_epochs = 20
-batch_size = 16
+batch_size = 64
 data_path = './data/math_equation_data.txt'
 g_seq_length = 15
 g_emb_dim = 8
@@ -50,12 +50,17 @@ def convert_to_one_hot(data, vocab_size):
 
     return samples
 
-def goodness_score_metric(generator, data_loader):
+def goodness_score_metric(generator, data_loader, print_sample = False):
     sample = generator.sample(batch_size, g_seq_length)
     all_strings = []
     for each_str in data_loader.convert_to_char(sample):
         all_strings.append(each_str)
-    print("Goodness string:", Utils.get_data_goodness_score(all_strings))
+
+    if(print_sample==True):
+        for each_str in all_strings:
+            print(each_str)
+
+    print("Goodness string:", Utils.get_data_goodness_score([all_strings]))
 
 def pretrain_lstm(generator, data_loader, optimizer, criterion, epochs):
     for i in range(epochs):
@@ -74,7 +79,7 @@ def pretrain_lstm(generator, data_loader, optimizer, criterion, epochs):
             optimizer.step()
         data_loader.reset()
     
-    goodness_score_metric(generator, data_loader)
+    goodness_score_metric(generator, data_loader, True)
     
     print('Finished pretraining LSTM')
 
@@ -148,7 +153,7 @@ def main():
     if (opt.cuda):
         generator.cuda()
 
-    pretrain_lstm(generator, data_loader, gen_optimizer, gen_criterion, 2)
+    pretrain_lstm(generator, data_loader, gen_optimizer, gen_criterion, 10)
 
     all_G_losses = []
     all_D_losses = []
